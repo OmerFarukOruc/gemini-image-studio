@@ -1,0 +1,5 @@
+downloads/
+*.bak
+node_modules/
+.omc/
+.DS_Store

@@ -1,0 +1,10 @@
+{
+  "name": "gemini-image-studio",
+  "version": "1.0.0",
+  "description": "AI image generation studio powered by Gemini — text-to-image, image-to-image, prompt enhancement, and more",
+  "scripts": {
+    "serve": "npx serve . -p 8080"
+  },
+  "license": "MIT",
+  "private": false
+}

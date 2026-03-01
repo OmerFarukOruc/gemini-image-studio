@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gemini Image Studio</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<div class="container">
+  <h1>Gemini Image Studio</h1>
+  <p class="subtitle">Text-to-Image & Image-to-Image with Gemini 3.1 Flash &middot; AI prompt enhancement & queue</p>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" data-mode="t2i">Text to Image</button>
+    <button class="mode-btn" data-mode="i2i">Image to Image</button>
+  </div>
+
+  <div class="panel">
+    <div class="info-box">
+      <strong>Setup:</strong> Enter your OpenAI-compatible API base URL and API key below.
+      Your credentials are stored only in your browser's local storage and never sent anywhere except the API endpoint you configure.
+    </div>
+
+    <div class="form-group">
+      <label>API Base URL</label>
+      <input type="text" id="apiBase" value="http://127.0.0.1:8045/v1" />
+    </div>
+
+    <div class="form-group">
+      <label>API Key <span class="save-indicator" id="saveIndicator">Saved</span></label>
+      <div class="api-key-row">
+        <div class="form-group">
+          <input type="password" id="apiKey" value="" placeholder="Enter your API key" />
+        </div>
+        <button class="toggle-vis-btn" id="toggleKeyVis" title="Show/hide API key">&#128065;</button>
+      </div>
+    </div>
+
+    <div class="settings-row form-group">
+      <div class="form-group">
+        <label>Model</label>
+        <select id="model">
+          <option value="gemini-3.1-flash-image">Gemini 3.1 Flash Image</option>
+        </select>
+      </div>
+      <div class="form-group" id="aspectGroup">
+        <label>Aspect Ratio</label>
+        <select id="aspectRatio">
+          <option value="1:1">1:1 &mdash; Square</option>
+          <option value="16:9">16:9 &mdash; Widescreen</option>
+          <option value="9:16">9:16 &mdash; Mobile / Vertical</option>
+          <option value="4:3">4:3 &mdash; Traditional</option>
+          <option value="3:4">3:4 &mdash; Portrait</option>
+          <option value="3:2">3:2 &mdash; DSLR</option>
+          <option value="2:3">2:3 &mdash; Portrait Photo</option>
+          <option value="21:9">21:9 &mdash; Ultra-wide</option>
+          <option value="5:4">5:4 &mdash; Large Format</option>
+          <option value="4:5">4:5 &mdash; Social Media</option>
+        </select>
+      </div>
+      <div class="form-group" id="qualityGroup">
+        <label>Quality</label>
+        <select id="quality">
+          <option value="standard" selected>Standard (1K)</option>
+          <option value="medium">Medium (2K)</option>
+          <option value="hd">HD (4K)</option>
+        </select>
+      </div>
+      <div class="form-group" id="thinkingGroup">
+        <label>Thinking</label>
+        <select id="thinkingLevel" class="thinking-select">
+          <option value="minimal" selected>Minimal (Fast)</option>
+          <option value="high">High (Better Quality)</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="imageInputs" class="hidden">
+      <div class="row form-group">
+        <div>
+          <label>Image 1</label>
+          <div class="dropzone" id="drop1">
+            <input type="file" accept="image/*" />
+            <div class="dropzone-icon">&#128444;</div>
+            <p class="dropzone-text">Drop image or <strong>browse</strong></p>
+          </div>
+        </div>
+        <div>
+          <label>Image 2 (optional)</label>
+          <div class="dropzone" id="drop2">
+            <input type="file" accept="image/*" />
+            <div class="dropzone-icon">&#128444;</div>
+            <p class="dropzone-text">Drop image or <strong>browse</strong></p>
+          </div>
+        </div>
+      </div>
+      <div class="i2i-settings-row" id="i2iSettings">
+        <div class="form-group">
+          <label>Aspect Ratio (override)</label>
+          <select id="i2iAspectRatio">
+            <option value="">Auto (from image)</option>
+            <option value="1:1">1:1 &mdash; Square</option>
+            <option value="16:9">16:9 &mdash; Widescreen</option>
+            <option value="9:16">9:16 &mdash; Vertical</option>
+            <option value="4:3">4:3 &mdash; Traditional</option>
+            <option value="3:4">3:4 &mdash; Portrait</option>
+            <option value="3:2">3:2 &mdash; DSLR</option>
+            <option value="2:3">2:3 &mdash; Portrait Photo</option>
+            <option value="21:9">21:9 &mdash; Ultra-wide</option>
+            <option value="5:4">5:4 &mdash; Large Format</option>
+            <option value="4:5">4:5 &mdash; Social Media</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Quality</label>
+          <select id="i2iQuality">
+            <option value="standard">Standard (1K)</option>
+            <option value="medium">Medium (2K)</option>
+            <option value="hd">HD (4K)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Style (optional)</label>
+          <input type="text" id="i2iStyle" placeholder="e.g. watercolor, cyberpunk" />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Prompt</label>
+      <textarea id="prompt" placeholder="Describe the image you want to generate..."></textarea>
+    </div>
+
+    <div class="prompt-library-bar">
+      <button id="savePromptBtn" type="button">&#128190; Save Prompt</button>
+      <button id="toggleLibraryBtn" type="button">&#128218; Library (<span id="libraryCount">0</span>)</button>
+    </div>
+    <div class="pl-save-row hidden" id="plSaveRow">
+      <input type="text" id="plTagInput" placeholder="Tags (comma-separated, e.g. landscape, fantasy)" />
+      <button id="plConfirmSaveBtn" type="button">Save</button>
+    </div>
+    <div class="prompt-library" id="promptLibraryPanel">
+      <input type="text" class="pl-search" id="plSearch" placeholder="Search prompts by text or tag..." />
+      <div class="prompt-library-list" id="promptLibraryList"></div>
+    </div>
+
+    <div class="form-group">
+      <button class="tips-toggle" id="tipsToggle" type="button">
+        &#128161; Prompt Tips &amp; Image Editing Guide <span class="arrow">&#9660;</span>
+      </button>
+      <div class="tips-content" id="tipsContent">
+        <h4>&#127912; Text-to-Image Tips</h4>
+        <ul>
+          <li>Be <strong>concise but descriptive</strong> &mdash; specify main subject, style, lighting, and color mood</li>
+          <li>Put text you want rendered in <code>"quotes"</code> and describe typography style</li>
+          <li>Specify visual format: <code>infographic</code>, <code>greeting card</code>, <code>product photo</code></li>
+          <li>Request <code>three variations</code> or <code>four color palettes</code> for side-by-side comparison</li>
+          <li>For character consistency: assign distinct names and upload clear reference images</li>
+        </ul>
+        <h4>&#9999;&#65039; Image-to-Image Editing</h4>
+        <ul>
+          <li>Upload 1&ndash;2 reference images and describe the edit: <code>change background to sunset</code></li>
+          <li>Style transfer: upload an image + describe target style: <code>make it look like a watercolor painting</code></li>
+          <li>Inpainting: describe what to add/remove: <code>remove the person on the left</code></li>
+          <li>Combine 2 images: upload both and describe how to merge them</li>
+          <li>Localization: <code>translate the text in the image to Japanese</code></li>
+        </ul>
+        <h4>&#129504; Thinking Levels</h4>
+        <ul>
+          <li><strong>Minimal</strong> (default) &mdash; fast generation, good for simple prompts</li>
+          <li><strong>High</strong> &mdash; model reasons through complex prompts before rendering, better quality &amp; prompt adherence</li>
+        </ul>
+        <h4>&#128208; Resolution Guide</h4>
+        <ul>
+          <li><strong>Standard (1K)</strong> &mdash; balanced quality and speed</li>
+          <li><strong>Medium (2K)</strong> &mdash; higher detail for print and web</li>
+          <li><strong>HD (4K)</strong> &mdash; maximum quality, production-ready</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="enhance-row">
+      <label class="toggle">
+        <input type="checkbox" id="enhanceToggle" checked />
+        <span class="toggle-slider"></span>
+      </label>
+      <span class="enhance-label" onclick="document.getElementById('enhanceToggle').click()">Enhance prompt with AI</span>
+      <select id="enhanceModel" class="enhance-model-select">
+        <option value="gemini-3-flash">Gemini 3 Flash</option>
+        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+        <option value="gemini-3.1-pro">Gemini 3.1 Pro</option>
+      </select>
+    </div>
+
+    <div class="enhanced-preview" id="enhancedPreview">
+      <div class="enhanced-preview-header">Enhanced Prompt</div>
+      <div class="enhanced-preview-text" id="enhancedText"></div>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 12px;">
+      <input type="text" id="sessionName" placeholder="Session name (optional)" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; background: rgba(0,0,0,0.2);" />
+    </div>
+
+    <div class="btn-row">
+      <button class="generate-btn" id="generateBtn">Generate</button>
+      <button class="queue-add-btn" id="queueAddBtn">+ Add to Queue</button>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="panel" id="galleryPanel">
+    <h3 style="font-size:16px;font-weight:600;display:flex;align-items:center;">&#128248; Generated Images <span id="galleryCount" class="gallery-count">0</span></h3>
+    <div class="history-bar">
+      <div class="history-stats"><span id="historyCount">0</span> images &middot; <span id="historySize">0 MB</span></div>
+      <div class="history-actions"><button class="history-btn" id="clearHistoryBtn" title="Clear all history">&#128465; Clear History</button></div>
+    </div>
+    <div class="gallery-filter-bar" id="galleryFilterBar">
+      <select id="filterModel"><option value="">All Models</option></select>
+      <select id="filterSession"><option value="">All Sessions</option></select>
+      <select id="filterMode"><option value="">All Modes</option></select>
+      <button id="clearFiltersBtn" type="button">Clear Filters</button>
+      <button id="compareBtn" type="button">&#128196; Compare (<span id="compareCount">0</span>)</button>
+      <button id="bulkExportBtn" type="button">&#128229; Export Visible</button>
+    </div>
+    <div class="results-gallery" id="resultsGallery"></div>
+  </div>
+
+  <div class="panel queue-panel hidden" id="queuePanel">
+    <h3>Queue <span class="queue-badge" id="queueBadge">0</span></h3>
+    <div class="queue-status-text" id="queueStatusText">0 jobs queued</div>
+    <div class="queue-progress"><div class="queue-progress-fill" id="queueProgressFill"></div></div>
+    <div class="queue-list" id="queueList"></div>
+    <div class="queue-actions">
+      <button class="queue-run-btn" id="queueRunBtn">Run Queue</button>
+      <button class="queue-clear-btn" id="queueClearBtn">Clear</button>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" onclick="window._gallery.closeLightbox && window._gallery.closeLightbox()">&times;</button>
+  <div class="lightbox-content">
+    <div class="lightbox-image-container">
+      <button class="lightbox-nav lightbox-prev" onclick="window._gallery.nav && window._gallery.nav(-1)">&#8249;</button>
+      <img id="lightboxImg" />
+      <button class="lightbox-nav lightbox-next" onclick="window._gallery.nav && window._gallery.nav(1)">&#8250;</button>
+    </div>
+    <div class="lightbox-sidebar" id="lightboxSidebar"></div>
+  </div>
+</div>
+
+<div class="compare-overlay" id="compareOverlay">
+  <div class="compare-overlay-header">
+    <h3>&#128196; Image Comparison</h3>
+    <button class="compare-overlay-close" id="compareCloseBtn">&times;</button>
+  </div>
+  <div class="compare-grid" id="compareGrid"></div>
+</div>
+
+<button class="debug-toggle-btn" id="debugToggleBtn">&#128027; Debug <span class="debug-badge" id="debugBadge">0</span></button>
+<div class="debug-panel" id="debugPanel">
+  <div class="debug-panel-header">
+    <div class="debug-title"><span class="debug-dot"></span> Debug Console</div>
+    <div class="debug-panel-actions">
+      <button id="debugCopyBtn">Copy JSON</button>
+      <button id="debugClearBtn">Clear All</button>
+      <button id="debugCollapseAllBtn">Collapse</button>
+      <button id="debugCloseBtn">&times;</button>
+    </div>
+  </div>
+  <div class="debug-log" id="debugLog">
+    <div class="debug-empty">No generations yet. Click Generate to see logs here.</div>
+  </div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
